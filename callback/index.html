@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlipDot — Spotify Auth</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #111; color: #eee;
+           display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; margin: 0; text-align: center; }
+    .box { max-width: 420px; padding: 2rem; }
+    .dot { font-size: 2rem; letter-spacing: 0.2em; margin-bottom: 1rem; }
+    p { color: #aaa; margin: 0.5rem 0; }
+    a { color: #f5a623; }
+    .err { color: #e74c3c; }
+  </style>
+</head>
+<body>
+<div class="box">
+  <div class="dot">● ○ ● ○ ●</div>
+  <h2 id="heading">Connecting Spotify…</h2>
+  <p id="msg">Redirecting you back to your display.</p>
+</div>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const code  = params.get("code");
+  const state = params.get("state");
+  const error = params.get("error");
+
+  const heading = document.getElementById("heading");
+  const msg     = document.getElementById("msg");
+
+  if (error) {
+    heading.textContent = "Auth cancelled";
+    msg.textContent = "Spotify said: " + error + ". Close this tab and try again.";
+    return;
+  }
+
+  if (!code || !state) {
+    // No OAuth params — someone navigated here directly.
+    heading.textContent = "FlipDot Controller";
+    msg.innerHTML = "This page handles Spotify logins for your FlipDot display. "
+      + "Open the controller at your device's local IP address.";
+    return;
+  }
+
+  // Decode the return URL that spConnect() stored in the OAuth state param.
+  // state = btoa(location.origin + "/")  →  e.g. "aHR0cDovLzE5Mi4xNjguMC4xNDQv"
+  let returnUrl;
+  try {
+    returnUrl = atob(state);
+    // Basic sanity: must look like http://...
+    if (!returnUrl.startsWith("http")) throw new Error("bad state");
+  } catch (e) {
+    heading.textContent = "Error";
+    msg.className = "err";
+    msg.textContent = "Could not parse return URL from state parameter.";
+    return;
+  }
+
+  // Redirect back to the ESP32 web app with the code as ?sp_code=
+  const redirectTo = returnUrl + "?sp_code=" + encodeURIComponent(code);
+  msg.innerHTML = "Returning to <code>" + returnUrl + "</code>…";
+  window.location.replace(redirectTo);
+})();
+</script>
+</body>
+</html>
